@@ -1,15 +1,17 @@
 const User = require('../models/User');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+const cryptojs = require('crypto-js')
 require('dotenv').config;
 
 exports.signup = (req, res, next) => {
- bcrypt.hash(req.body.password, 10)
- .then( hash => {
-    const user = new User({
-        email: req.body.email,
-        password: hash
-    });
+    const hashedEmail = cryptojs.HmacMD5(req.body.email, process.env.SCRT_CRYPTOJS_TKN).toString(cryptojs.enc.Base64);
+    bcrypt.hash(req.body.password, 10)
+    .then( hash => {
+        const user = new User({
+            email: hashedEmail,
+            password: hash
+        });
     user.save()
     .then(() => res.status(201).json( { message: 'Utilisateur créé !' }))
     .catch(error => res.status(400).json({ error }));
@@ -18,7 +20,8 @@ exports.signup = (req, res, next) => {
 };
 
 exports.login = (req, res, next) => {
-    User.findOne({ email: req.body.email })
+    const hashedEmail = cryptojs.HmacMD5(req.body.email, process.env.SECRET_CRYPTOJS_TOKEN).toString(cryptojs.enc.Base64);
+    User.findOne({ email: hashedEmail })
     .then(user => {
         if (!user) {
             return res.status(401).json({ error: 'Utilisateur non trouvé !'});
